@@ -166,13 +166,13 @@ class _NewGamePageState extends State<NewGamePage> {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("7 Wonders Scoring"),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.transparent,
-      ),
-      extendBodyBehindAppBar: true,
+      // appBar: AppBar(
+      //   title: Text("7 Wonders Scoring"),
+      //   elevation: 0,
+      //   backgroundColor: Colors.transparent,
+      //   foregroundColor: Colors.transparent,
+      // ),
+      // extendBodyBehindAppBar: true,
 
       body: SafeArea(
         child: Padding(
@@ -180,7 +180,7 @@ class _NewGamePageState extends State<NewGamePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
+              //Header
               Container(
                 padding: const EdgeInsets.symmetric(
                   vertical: 20,
@@ -201,22 +201,22 @@ class _NewGamePageState extends State<NewGamePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: SizedBox(
-                        height: 36,
-                        width: 36,
-                        child: ColorFiltered(
-                          colorFilter: ColorFilter.mode(
-                            goldBright,
-                            BlendMode.srcIn,
-                          ),
-                          child: SvgPicture.asset(
-                            'assets/icons/laurel.svg',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    // Center(
+                    //   child: SizedBox(
+                    //     height: 36,
+                    //     width: 36,
+                    //     child: ColorFiltered(
+                    //       colorFilter: ColorFilter.mode(
+                    //         goldBright,
+                    //         BlendMode.srcIn,
+                    //       ),
+                    //       child: SvgPicture.asset(
+                    //         'assets/icons/laurel.svg',
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+                    // const SizedBox(height: 16),
                     Container(
                       height: 4,
                       width: 60,
