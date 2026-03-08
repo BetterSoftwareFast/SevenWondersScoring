@@ -12,6 +12,8 @@ class NewGamePage extends StatefulWidget {
 
 class _NewGamePageState extends State<NewGamePage> {
   final List<TextEditingController> _controllers = [];
+  final List<List<String>> suggestions = [];
+  List<String> roster = [];
 
   @override
   void initState() {
@@ -19,7 +21,27 @@ class _NewGamePageState extends State<NewGamePage> {
     // Start with 3 default players
     for (int i = 0; i < 3; i++) {
       _controllers.add(TextEditingController());
+      suggestions.add(<String>[]);
     }
+
+    _loadRoster();
+  }
+
+  void _loadRoster() async {
+    final roster = await PlayerRoster.load();
+    setState(() {
+      roster;
+    });
+  }
+
+  void _updateSuggestions(int index, String query) {
+    final lower = query.toLowerCase();
+
+    setState(() {
+      suggestions[index] = roster
+          .where((name) => name.toLowerCase().contains(lower))
+          .toList();
+    });
   }
 
   void _addPlayer() {
@@ -32,6 +54,7 @@ class _NewGamePageState extends State<NewGamePage> {
 
     setState(() {
       _controllers.add(TextEditingController());
+      suggestions.add(<String>[]);
     });
   }
 
@@ -39,6 +62,7 @@ class _NewGamePageState extends State<NewGamePage> {
     if (_controllers.length <= 3) return; // enforce minimum 3 players
     setState(() {
       _controllers.removeAt(index);
+      suggestions.removeAt(index);
     });
   }
 
@@ -180,27 +204,52 @@ class _NewGamePageState extends State<NewGamePage> {
                         border: Border.all(color: gold, width: 1.2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
+                            color: Colors.black.withValues(alpha: 0.15),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('👤', style: TextStyle(fontSize: 22)),
                           const SizedBox(width: 12),
+
                           Expanded(
-                            child: TextField(
-                              controller: _controllers[index],
-                              decoration: const InputDecoration(
-                                hintText: 'Player name',
-                                border: InputBorder.none,
-                              ),
-                              style: TextStyle(color: brown, fontSize: 18),
-                              onChanged: (_) => setState(() {}),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                TextField(
+                                  controller: _controllers[index],
+                                  decoration: const InputDecoration(
+                                    hintText: 'Player name',
+                                    border: InputBorder.none,
+                                  ),
+                                  style: TextStyle(color: brown, fontSize: 18),
+                                  onChanged: (value) =>
+                                      _updateSuggestions(index, value),
+                                ),
+
+                                if (suggestions[index].isNotEmpty)
+                                  ...suggestions[index].map(
+                                    (s) => ListTile(
+                                      dense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        s,
+                                        style: TextStyle(color: brown),
+                                      ),
+                                      onTap: () {
+                                        _controllers[index].text = s;
+                                        setState(() => suggestions[index] = []);
+                                      },
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
+
                           if (_controllers.length > 3)
                             GestureDetector(
                               onTap: () => _removePlayer(index),
@@ -241,9 +290,7 @@ class _NewGamePageState extends State<NewGamePage> {
                     _canContinue ? Colors.black : Colors.grey.shade700,
                   ),
                 ),
-                onPressed: _canContinue
-                    ? () => _goToScoring()
-                    : null,
+                onPressed: _canContinue ? () => _goToScoring() : null,
                 child: const Text('Continue'),
               ),
             ],
