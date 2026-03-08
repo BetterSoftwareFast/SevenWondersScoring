@@ -12,6 +12,7 @@ class NewGamePage extends StatefulWidget {
 
 class _NewGamePageState extends State<NewGamePage> {
   final List<TextEditingController> _controllers = [];
+  final List<FocusNode> _focusNodes = [];
   final List<List<String>> suggestions = [];
   List<String> roster = [];
   bool isEditing = false;
@@ -29,7 +30,20 @@ class _NewGamePageState extends State<NewGamePage> {
   void _initPlayers() {
     for (int i = 0; i < _minPlayers; i++) {
       _controllers.add(TextEditingController());
+      _focusNodes.add(FocusNode());
       suggestions.add(<String>[]);
+
+      _focusNodes[i].addListener(_handleFocusChange);
+    }
+  }
+
+  void _handleFocusChange() {
+    final anyFocused = _focusNodes.any((node) => node.hasFocus);
+
+    if (isEditing != anyFocused) {
+      setState(() {
+        isEditing = anyFocused;
+      });
     }
   }
 
@@ -37,7 +51,6 @@ class _NewGamePageState extends State<NewGamePage> {
     final playerRoster = await PlayerRoster.load();
     setState(() {
       roster = playerRoster;
-      print("ROSTER LOADED: $roster");
     });
   }
 
@@ -52,17 +65,27 @@ class _NewGamePageState extends State<NewGamePage> {
     setState(() {
       _controllers.add(TextEditingController());
       suggestions.add(<String>[]);
+
+      final node = FocusNode();
+      node.addListener(_handleFocusChange);
+      _focusNodes.add(node);
     });
   }
 
   void _removePlayer(int index) {
-    if (_controllers.length <= _minPlayers) return; // enforce minimum 3 players
+    if (_controllers.length <= _minPlayers) return;
 
     setState(() {
       _controllers[index].dispose();
       _controllers.removeAt(index);
+
+      _focusNodes[index].dispose();
+      _focusNodes.removeAt(index);
+
       suggestions.removeAt(index);
     });
+
+    _handleFocusChange();
   }
 
   void _updateSuggestions(int index, String query) {
@@ -81,8 +104,6 @@ class _NewGamePageState extends State<NewGamePage> {
       suggestions[index] = roster
           .where((name) => name.toLowerCase().contains(lower))
           .toList();
-      print("ROSTER LOADED: $roster");
-      print("QUERY: '$query' → MATCHES: ${suggestions[index]}");
     });
   }
 
@@ -116,6 +137,9 @@ class _NewGamePageState extends State<NewGamePage> {
   void dispose() {
     for (final c in _controllers) {
       c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
     }
     super.dispose();
   }
@@ -188,7 +212,7 @@ class _NewGamePageState extends State<NewGamePage> {
                           ),
                           child: SvgPicture.asset(
                             'assets/icons/laurel.svg',
-                          ), // or SvgPicture.asset
+                          ),
                         ),
                       ),
                     ),
@@ -237,7 +261,7 @@ class _NewGamePageState extends State<NewGamePage> {
                         border: Border.all(color: gold, width: 1.2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
+                            color: Colors.black.withOpacity(0.15),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -245,38 +269,38 @@ class _NewGamePageState extends State<NewGamePage> {
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [                                       
+                        children: [
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Focus(
-                                  onFocusChange: (hasFocus) {
-                                    setState(() {
-                                      isEditing = hasFocus;
-                                    });
-                                  },
-                                  child: TextField(
-                                    controller: _controllers[index],
-                                    decoration: const InputDecoration(
-                                      prefixIcon: Padding(padding: const EdgeInsets.only(left:8,right:8),
-                                      child:Text('👤', style: TextStyle(fontSize: 22)),
-                                      ),
-                                      hintText: 'Player name',
-                                      border: InputBorder.none,
+                                TextField(
+                                  controller: _controllers[index],
+                                  focusNode: _focusNodes[index],
+                                  decoration: const InputDecoration(
+                                    prefixIcon: Padding(
+                                      padding: EdgeInsets.only(left: 8, right: 8),
+                                      child: Text('👤', style: TextStyle(fontSize: 22)),
                                     ),
-                                    style: TextStyle(
-                                      color: brown,
-                                      fontSize: 18,
+                                    prefixIconConstraints: BoxConstraints(
+                                      minWidth: 0,
+                                      minHeight: 0,
                                     ),
-                                    onChanged: (value) =>
-                                        _updateSuggestions(index, value),
-                                    textInputAction: TextInputAction.done,
-                                    onEditingComplete: (){
-                                      FocusScope.of(context).unfocus();
-                                    },
+                                    hintText: 'Player name',
+                                    border: InputBorder.none,
                                   ),
+                                  style: TextStyle(
+                                    color: brown,
+                                    fontSize: 18,
+                                  ),
+                                  onChanged: (value) =>
+                                      _updateSuggestions(index, value),
+                                  textInputAction: TextInputAction.done,
+                                  onEditingComplete: () {
+                                    FocusScope.of(context).unfocus();
+                                  },
                                 ),
+
                                 if (suggestions[index].isNotEmpty)
                                   Container(
                                     margin: const EdgeInsets.only(top: 6),
@@ -297,43 +321,37 @@ class _NewGamePageState extends State<NewGamePage> {
                                     ),
                                     child: Column(
                                       children: [
-                                        for (
-                                          int i = 0;
-                                          i < suggestions[index].length;
-                                          i++
-                                        ) ...[
+                                        for (int i = 0;
+                                            i < suggestions[index].length;
+                                            i++) ...[
                                           InkWell(
                                             onTap: () {
                                               _controllers[index].text =
                                                   suggestions[index][i];
-                                              setState(
-                                                () => suggestions[index] = [],
-                                              );
+                                              setState(() =>
+                                                  suggestions[index] = []);
                                             },
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            highlightColor: gold.withOpacity(
-                                              0.15,
-                                            ),
-                                            splashColor: gold.withOpacity(0.25),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            highlightColor:
+                                                gold.withOpacity(0.15),
+                                            splashColor:
+                                                gold.withOpacity(0.25),
                                             child: Container(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.75,
-                                              ),
+                                              color: Colors.white
+                                                  .withOpacity(0.75),
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    vertical: 10,
-                                                    horizontal: 12,
-                                                  ),
+                                                vertical: 10,
+                                                horizontal: 12,
+                                              ),
                                               child: Row(
                                                 children: [
                                                   Icon(
                                                     Icons.person,
                                                     size: 18,
-                                                    color: brown.withOpacity(
-                                                      0.8,
-                                                    ),
+                                                    color:
+                                                        brown.withOpacity(0.8),
                                                   ),
                                                   const SizedBox(width: 8),
                                                   Text(
@@ -349,9 +367,8 @@ class _NewGamePageState extends State<NewGamePage> {
                                               ),
                                             ),
                                           ),
-
-                                          // Divider between items (except last)
-                                          if (i < suggestions[index].length - 1)
+                                          if (i <
+                                              suggestions[index].length - 1)
                                             Divider(
                                               color: gold.withOpacity(0.4),
                                               height: 1,
@@ -386,7 +403,6 @@ class _NewGamePageState extends State<NewGamePage> {
               if (!isEditing) ...[
                 const SizedBox(height: 12),
 
-                // Add player button
                 ElevatedButton.icon(
                   style: wondersButtonStyle,
                   onPressed: _addPlayer,
@@ -396,7 +412,6 @@ class _NewGamePageState extends State<NewGamePage> {
 
                 const SizedBox(height: 16),
 
-                // Continue button
                 ElevatedButton(
                   style: wondersButtonStyle.copyWith(
                     backgroundColor: WidgetStateProperty.all(
