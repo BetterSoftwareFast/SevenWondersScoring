@@ -109,22 +109,8 @@ class _ScoringPageState extends State<ScoringPage> {
                   ],
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: SizedBox(
-                        height: 36,
-                        width: 36,
-                        child: ColorFiltered(
-                          colorFilter: const ColorFilter.mode(
-                            goldBright,
-                            BlendMode.srcIn,
-                          ),
-                          child: SvgPicture.asset('assets/icons/laurel.svg'),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [        
                     Container(
                       height: 4,
                       width: 60,

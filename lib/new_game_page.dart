@@ -201,22 +201,6 @@ class _NewGamePageState extends State<NewGamePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Center(
-                    //   child: SizedBox(
-                    //     height: 36,
-                    //     width: 36,
-                    //     child: ColorFiltered(
-                    //       colorFilter: ColorFilter.mode(
-                    //         goldBright,
-                    //         BlendMode.srcIn,
-                    //       ),
-                    //       child: SvgPicture.asset(
-                    //         'assets/icons/laurel.svg',
-                    //       ),
-                    //     ),
-                    //   ),
-                    // ),
-                    // const SizedBox(height: 16),
                     Container(
                       height: 4,
                       width: 60,
