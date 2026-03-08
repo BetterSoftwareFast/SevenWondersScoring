@@ -67,8 +67,15 @@ class _NewGamePageState extends State<NewGamePage> {
   void _updateSuggestions(int index, String query) {
     if (index < 0 || index >= suggestions.length) return;
 
+    final trimmed = query.trim();
+
+    if (trimmed.isEmpty) {
+      setState(() => suggestions[index] = []);
+      return;
+    }
+
     final lower = query.toLowerCase();
-   
+
     setState(() {
       suggestions[index] = roster
           .where((name) => name.toLowerCase().contains(lower))
@@ -256,33 +263,84 @@ class _NewGamePageState extends State<NewGamePage> {
                                 ),
                                 if (suggestions[index].isNotEmpty)
                                   Container(
-                                    margin: const EdgeInsets.only(top: 4),
+                                    margin: const EdgeInsets.only(top: 6),
                                     decoration: BoxDecoration(
                                       color: parchment,
                                       borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: gold, width: 1),
+                                      border: Border.all(
+                                        color: gold,
+                                        width: 1.2,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.12),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
                                     child: Column(
-                                      children: suggestions[index].map((s) {
-                                        return ListTile(
-                                          dense: true,
-                                          visualDensity: VisualDensity.compact,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 8,
+                                      children: [
+                                        for (
+                                          int i = 0;
+                                          i < suggestions[index].length;
+                                          i++
+                                        ) ...[
+                                          InkWell(
+                                            onTap: () {
+                                              _controllers[index].text =
+                                                  suggestions[index][i];
+                                              setState(
+                                                () => suggestions[index] = [],
+                                              );
+                                            },
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            highlightColor: gold.withOpacity(
+                                              0.15,
+                                            ),
+                                            splashColor: gold.withOpacity(0.25),
+                                            child: Container(
+                                              color:Colors.white.withValues(alpha: 0.75),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 10,
+                                                    horizontal: 12,
+                                                  ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.person,
+                                                    size: 18,
+                                                    color: brown.withOpacity(
+                                                      0.8,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    suggestions[index][i],
+                                                    style: TextStyle(
+                                                      color: brown,
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                          title: Text(
-                                            s,
-                                            style: TextStyle(color: brown),
+                                            ),
                                           ),
-                                          onTap: () {
-                                            _controllers[index].text = s;
-                                            setState(
-                                              () => suggestions[index] = [],
-                                            );
-                                          },
-                                        );
-                                      }).toList(),
+
+                                          // Divider between items (except last)
+                                          if (i < suggestions[index].length - 1)
+                                            Divider(
+                                              color: gold.withOpacity(0.4),
+                                              height: 1,
+                                              thickness: 1,
+                                            ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                               ],
