@@ -245,9 +245,7 @@ class _NewGamePageState extends State<NewGamePage> {
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('👤', style: TextStyle(fontSize: 22)),
-                          const SizedBox(width: 12),
+                        children: [                                       
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,6 +259,9 @@ class _NewGamePageState extends State<NewGamePage> {
                                   child: TextField(
                                     controller: _controllers[index],
                                     decoration: const InputDecoration(
+                                      prefixIcon: Padding(padding: const EdgeInsets.only(left:8,right:8),
+                                      child:Text('👤', style: TextStyle(fontSize: 22)),
+                                      ),
                                       hintText: 'Player name',
                                       border: InputBorder.none,
                                     ),
