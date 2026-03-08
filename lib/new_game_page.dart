@@ -15,37 +15,33 @@ class _NewGamePageState extends State<NewGamePage> {
   final List<List<String>> suggestions = [];
   List<String> roster = [];
 
+  static const int _maxPlayers = 7;
+  static const int _minPlayers = 3;
+
   @override
   void initState() {
     super.initState();
-    // Start with 3 default players
-    for (int i = 0; i < 3; i++) {
-      _controllers.add(TextEditingController());
-      suggestions.add(<String>[]);
-    }
-
+    _initPlayers();
     _loadRoster();
   }
 
-  void _loadRoster() async {
-    final roster = await PlayerRoster.load();
-    setState(() {
-      roster;
-    });
+  void _initPlayers() {
+    for (int i = 0; i < _minPlayers; i++) {
+      _controllers.add(TextEditingController());
+      suggestions.add(<String>[]);
+    }
   }
 
-  void _updateSuggestions(int index, String query) {
-    final lower = query.toLowerCase();
-
+  void _loadRoster() async {
+    final playerRoster = await PlayerRoster.load();
     setState(() {
-      suggestions[index] = roster
-          .where((name) => name.toLowerCase().contains(lower))
-          .toList();
+      roster = playerRoster;
+      print("ROSTER LOADED: $roster");
     });
   }
 
   void _addPlayer() {
-    if (_controllers.length >= 7) {
+    if (_controllers.length >= _maxPlayers) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Maximum of 7 players allowed')),
       );
@@ -59,32 +55,61 @@ class _NewGamePageState extends State<NewGamePage> {
   }
 
   void _removePlayer(int index) {
-    if (_controllers.length <= 3) return; // enforce minimum 3 players
+    if (_controllers.length <= _minPlayers) return; // enforce minimum 3 players
+
     setState(() {
+      _controllers[index].dispose();
       _controllers.removeAt(index);
       suggestions.removeAt(index);
     });
   }
 
-  void _goToScoring() async {
-    final newNames = _controllers
+  void _updateSuggestions(int index, String query) {
+    if (index < 0 || index >= suggestions.length) return;
+
+    final lower = query.toLowerCase();
+   
+    setState(() {
+      suggestions[index] = roster
+          .where((name) => name.toLowerCase().contains(lower))
+          .toList();
+      print("ROSTER LOADED: $roster");
+      print("QUERY: '$query' → MATCHES: ${suggestions[index]}");
+    });
+  }
+
+  void _onContinue() async {
+    final names = _controllers
         .map((c) => c.text.trim())
         .where((name) => name.isNotEmpty)
         .toList();
 
-    PlayerRoster.addNames(newNames);
+    if (names.length < _minPlayers) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter at least $_minPlayers players')),
+      );
+      return;
+    }
+
+    await PlayerRoster.addNames(names);
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => ScoringPage(playerNames: newNames),
-      ),
+      MaterialPageRoute(builder: (context) => ScoringPage(playerNames: names)),
     );
   }
 
   bool get _canContinue {
     return _controllers.length >= 3 &&
         _controllers.every((c) => c.text.trim().isNotEmpty);
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -215,7 +240,6 @@ class _NewGamePageState extends State<NewGamePage> {
                         children: [
                           const Text('👤', style: TextStyle(fontSize: 22)),
                           const SizedBox(width: 12),
-
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,27 +254,42 @@ class _NewGamePageState extends State<NewGamePage> {
                                   onChanged: (value) =>
                                       _updateSuggestions(index, value),
                                 ),
-
                                 if (suggestions[index].isNotEmpty)
-                                  ...suggestions[index].map(
-                                    (s) => ListTile(
-                                      dense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      title: Text(
-                                        s,
-                                        style: TextStyle(color: brown),
-                                      ),
-                                      onTap: () {
-                                        _controllers[index].text = s;
-                                        setState(() => suggestions[index] = []);
-                                      },
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 4),
+                                    decoration: BoxDecoration(
+                                      color: parchment,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: gold, width: 1),
+                                    ),
+                                    child: Column(
+                                      children: suggestions[index].map((s) {
+                                        return ListTile(
+                                          dense: true,
+                                          visualDensity: VisualDensity.compact,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                              ),
+                                          title: Text(
+                                            s,
+                                            style: TextStyle(color: brown),
+                                          ),
+                                          onTap: () {
+                                            _controllers[index].text = s;
+                                            setState(
+                                              () => suggestions[index] = [],
+                                            );
+                                          },
+                                        );
+                                      }).toList(),
                                     ),
                                   ),
                               ],
                             ),
                           ),
 
-                          if (_controllers.length > 3)
+                          if (_controllers.length > _minPlayers)
                             GestureDetector(
                               onTap: () => _removePlayer(index),
                               child: const Padding(
@@ -290,7 +329,7 @@ class _NewGamePageState extends State<NewGamePage> {
                     _canContinue ? Colors.black : Colors.grey.shade700,
                   ),
                 ),
-                onPressed: _canContinue ? () => _goToScoring() : null,
+                onPressed: _canContinue ? () => _onContinue() : null,
                 child: const Text('Continue'),
               ),
             ],
