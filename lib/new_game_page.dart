@@ -14,6 +14,7 @@ class _NewGamePageState extends State<NewGamePage> {
   final List<TextEditingController> _controllers = [];
   final List<List<String>> suggestions = [];
   List<String> roster = [];
+  bool isEditing = false;
 
   static const int _maxPlayers = 7;
   static const int _minPlayers = 3;
@@ -251,15 +252,29 @@ class _NewGamePageState extends State<NewGamePage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                TextField(
-                                  controller: _controllers[index],
-                                  decoration: const InputDecoration(
-                                    hintText: 'Player name',
-                                    border: InputBorder.none,
+                                Focus(
+                                  onFocusChange: (hasFocus) {
+                                    setState(() {
+                                      isEditing = hasFocus;
+                                    });
+                                  },
+                                  child: TextField(
+                                    controller: _controllers[index],
+                                    decoration: const InputDecoration(
+                                      hintText: 'Player name',
+                                      border: InputBorder.none,
+                                    ),
+                                    style: TextStyle(
+                                      color: brown,
+                                      fontSize: 18,
+                                    ),
+                                    onChanged: (value) =>
+                                        _updateSuggestions(index, value),
+                                    textInputAction: TextInputAction.done,
+                                    onEditingComplete: (){
+                                      FocusScope.of(context).unfocus();
+                                    },
                                   ),
-                                  style: TextStyle(color: brown, fontSize: 18),
-                                  onChanged: (value) =>
-                                      _updateSuggestions(index, value),
                                 ),
                                 if (suggestions[index].isNotEmpty)
                                   Container(
@@ -302,7 +317,9 @@ class _NewGamePageState extends State<NewGamePage> {
                                             ),
                                             splashColor: gold.withOpacity(0.25),
                                             child: Container(
-                                              color:Colors.white.withValues(alpha: 0.75),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.75,
+                                              ),
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                     vertical: 10,
@@ -365,31 +382,33 @@ class _NewGamePageState extends State<NewGamePage> {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              if (!isEditing) ...[
+                const SizedBox(height: 12),
 
-              // Add player button
-              ElevatedButton.icon(
-                style: wondersButtonStyle,
-                onPressed: _addPlayer,
-                icon: const Text('➕', style: TextStyle(fontSize: 20)),
-                label: const Text('Add Player'),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Continue button
-              ElevatedButton(
-                style: wondersButtonStyle.copyWith(
-                  backgroundColor: WidgetStateProperty.all(
-                    _canContinue ? goldBright : Colors.grey.shade400,
-                  ),
-                  foregroundColor: WidgetStateProperty.all(
-                    _canContinue ? Colors.black : Colors.grey.shade700,
-                  ),
+                // Add player button
+                ElevatedButton.icon(
+                  style: wondersButtonStyle,
+                  onPressed: _addPlayer,
+                  icon: const Text('➕', style: TextStyle(fontSize: 20)),
+                  label: const Text('Add Player'),
                 ),
-                onPressed: _canContinue ? () => _onContinue() : null,
-                child: const Text('Continue'),
-              ),
+
+                const SizedBox(height: 16),
+
+                // Continue button
+                ElevatedButton(
+                  style: wondersButtonStyle.copyWith(
+                    backgroundColor: WidgetStateProperty.all(
+                      _canContinue ? goldBright : Colors.grey.shade400,
+                    ),
+                    foregroundColor: WidgetStateProperty.all(
+                      _canContinue ? Colors.black : Colors.grey.shade700,
+                    ),
+                  ),
+                  onPressed: _canContinue ? () => _onContinue() : null,
+                  child: const Text('Continue'),
+                ),
+              ],
             ],
           ),
         ),
