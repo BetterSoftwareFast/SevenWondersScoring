@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'player_score.dart';
-import 'player_roster.dart';
-import 'previous_games.dart';
 
 class ScoringPage extends StatefulWidget {
   final List<String> playerNames;
@@ -14,451 +11,360 @@ class ScoringPage extends StatefulWidget {
 }
 
 class _ScoringPageState extends State<ScoringPage> {
-  late List<PlayerScore> scores;
-  List<int> winnerIndices = [];
+  final List<String> categories = [
+    'Military',
+    'Coins',
+    'Wonders',
+    'Civilian',
+    'Commerce',
+    'Guilds',
+    'Science',
+  ];
+
+  late Map<String, List<int>> scores;
+
+  final Map<String, String> categoryIcons = {
+    'Military': 'assets/icons/military.svg',
+    'Coins': 'assets/icons/coins.svg',
+    'Wonders': 'assets/icons/wonders.svg',
+    'Civilian': 'assets/icons/civilian.svg',
+    'Commerce': 'assets/icons/commerce.svg',
+    'Guilds': 'assets/icons/guilds.svg',
+    'Science': 'assets/icons/science.svg',
+  };
 
   @override
   void initState() {
     super.initState();
-    scores = widget.playerNames.map((n) => PlayerScore(n)).toList();
-    _updateWinners();
+    scores = {
+      for (var cat in categories)
+        cat: List.filled(widget.playerNames.length, 0),
+    };
   }
 
-  // ------------------------------------------------------------
-  // ICON + LABEL HELPERS
-  // ------------------------------------------------------------
-
-  Widget scoreIcon(String assetName, {Color? color}) {
-    return SvgPicture.asset(
-      'assets/icons/$assetName',
-      width: 22,
-      height: 22,
-      colorFilter: color != null
-          ? ColorFilter.mode(color, BlendMode.srcIn)
-          : null,
-    );
+  int totalForPlayer(int index) {
+    return categories.fold(0, (sum, cat) => sum + scores[cat]![index]);
   }
 
-  Widget label(String text, String iconAsset, Color color) {
-    return Row(
-      children: [
-        scoreIcon(iconAsset, color: color),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ------------------------------------------------------------
-  // CELL + ROW HELPERS
-  // ------------------------------------------------------------
-
-  Widget cell({required int value, required void Function(int) onChanged}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      child: SizedBox(
-        width: 65,
-        child: TextField(
-          keyboardType: TextInputType.number,
-          textAlign: TextAlign.center,
-          decoration: const InputDecoration(
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.symmetric(vertical: 10),
-          ),
-          controller: TextEditingController(text: value.toString())
-            ..selection = TextSelection.fromPosition(
-              TextPosition(offset: value.toString().length),
-            ),
-          onChanged: (v) => onChanged(int.tryParse(v) ?? 0),
-        ),
-      ),
-    );
-  }
-
-  Widget highlightableCell({
-    required int value,
-    required void Function(int) onChanged,
-    required bool highlight,
-  }) {
-    return Container(
-      decoration: highlight
-          ? BoxDecoration(
-              color: Colors.amber.shade200.withOpacity(0.35),
-              border: Border(
-                left: BorderSide(color: Colors.amber.shade700, width: 2),
-                right: BorderSide(color: Colors.amber.shade700, width: 2),
-              ),
-            )
-          : null,
-      child: cell(value: value, onChanged: onChanged),
-    );
-  }
-
-  TableRow row(Widget label, List<Widget> cells, {BoxDecoration? decoration}) {
-    return TableRow(
-      decoration:
-          decoration ??
-          const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.black12)),
-          ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-          child: label,
-        ),
-        ...cells,
-      ],
-    );
-  }
-
-  // ------------------------------------------------------------
-  // WINNER LOGIC
-  // ------------------------------------------------------------
-
-  int clampScore(int value, String category) {
-    switch (category) {
-      case 'military':
-        return value.clamp(-6, 18);
-      case 'coins':
-        return value < 0 ? 0 : value;
-      case 'wonders':
-        return value.clamp(0, 20);
-      case 'civilian':
-        return value.clamp(0, 30);
-      case 'commerce':
-        return value.clamp(0, 20);
-      case 'guilds':
-        return value.clamp(0, 20);
-      case 'sciTablets':
-      case 'sciGears':
-      case 'sciCompasses':
-        return value.clamp(0, 10);
-      default:
-        return value;
-    }
-  }
-
-  void _updateWinners() {
-    final totals = scores.map((p) => p.total).toList();
+  List<int> get winners {
+    final totals = List.generate(widget.playerNames.length, totalForPlayer);
     final maxScore = totals.reduce((a, b) => a > b ? a : b);
-
-    winnerIndices = [];
-    for (int i = 0; i < totals.length; i++) {
-      if (totals[i] == maxScore) {
-        winnerIndices.add(i);
-      }
-    }
+    return List.generate(
+      totals.length,
+      (i) => i,
+    ).where((i) => totals[i] == maxScore).toList();
   }
-
-  // ------------------------------------------------------------
-  // HEADER WITH CROWN
-  // ------------------------------------------------------------
-
-  Widget headerCell(String name, bool isWinner) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isWinner)
-            Icon(Icons.emoji_events, color: Colors.amber.shade700, size: 22),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ------------------------------------------------------------
-  // FINISH GAME
-  // ------------------------------------------------------------
-  void _finishGame() async {
-    // Save player names to roster
-    await PlayerRoster.addNames(scores.map((s) => s.name).toList());
-
-    // SAVE THE GAME HERE
-    await PreviousGamesStore.saveGame(
-      PreviousGame(
-        date: DateTime.now(),
-        players: scores.map((p) => PlayerScore.fromJson(p.toJson())).toList(),
-      ),
-    );
-
-    // Sort for display
-    final sorted = [...scores]..sort((a, b) => b.total - a.total);
-
-    // Show results dialog
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Results'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: sorted
-              .map(
-                (p) => ListTile(
-                  title: Text(p.name),
-                  trailing: Text(
-                    p.total.toString(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              )
-              .toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.popUntil(context, ModalRoute.withName('/')),
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ------------------------------------------------------------
-  // BUILD
-  // ------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
+    const parchment = Color(0xFFF8EED9);
+    const parchmentDark = Color(0xFFF3E5C8);
+    const gold = Color(0xFFB8860B);
+    const goldBright = Color(0xFFDAA520);
+    const brown = Color(0xFF4A2F0B);
+
+    final ButtonStyle wondersButtonStyle = ElevatedButton.styleFrom(
+      backgroundColor: goldBright,
+      foregroundColor: Colors.black,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: gold, width: 1.2),
+      ),
+      elevation: 3,
+      shadowColor: Colors.black.withOpacity(0.25),
+      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+    );
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Scoring')),
-      body: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Table(
-            defaultColumnWidth: const IntrinsicColumnWidth(),
-            border: TableBorder.symmetric(
-              inside: const BorderSide(color: Colors.black12),
-              outside: const BorderSide(color: Colors.black),
-            ),
-            children: [
-              // HEADER ROW
-              TableRow(
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Colors.black)),
+      appBar: AppBar(
+        title: null,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.transparent,
+      ),
+      extendBodyBehindAppBar: true,
+
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 20,
+                  horizontal: 16,
                 ),
-                children: [
-                  const SizedBox(),
-                  for (int i = 0; i < scores.length; i++)
-                    headerCell(scores[i].name, winnerIndices.contains(i)),
-                ],
-              ),
-
-              // CATEGORY ROWS
-              row(label('Military', 'military.svg', Colors.red.shade700), [
-                for (int i = 0; i < scores.length; i++)
-                  highlightableCell(
-                    value: scores[i].military,
-                    onChanged: (v) => setState(() {
-                      scores[i].military = clampScore(v, 'military');;
-                      _updateWinners();
-                    }),
-                    highlight: winnerIndices.contains(i),
-                  ),
-              ]),
-
-              row(label('Coins', 'coins.svg', Colors.amber.shade700), [
-                for (int i = 0; i < scores.length; i++)
-                  highlightableCell(
-                    value: scores[i].coins,
-                    onChanged: (v) => setState(() {
-                      scores[i].coins = clampScore(v, 'coins');;
-                      _updateWinners();
-                    }),
-                    highlight: winnerIndices.contains(i),
-                  ),
-              ]),
-
-              row(label('Wonders', 'wonders.svg', Colors.brown.shade600), [
-                for (int i = 0; i < scores.length; i++)
-                  highlightableCell(
-                    value: scores[i].wonders,
-                    onChanged: (v) => setState(() {
-                      scores[i].wonders = clampScore(v, 'wonders');;
-                      _updateWinners();
-                    }),
-                    highlight: winnerIndices.contains(i),
-                  ),
-              ]),
-
-              row(label('Civilian', 'civilian.svg', Colors.blue.shade600), [
-                for (int i = 0; i < scores.length; i++)
-                  highlightableCell(
-                    value: scores[i].civilian,
-                    onChanged: (v) => setState(() {
-                      scores[i].civilian = clampScore(v, 'civilian');;
-                      _updateWinners();
-                    }),
-                    highlight: winnerIndices.contains(i),
-                  ),
-              ]),
-
-              row(label('Commerce', 'commerce.svg', Colors.amber.shade600), [
-                for (int i = 0; i < scores.length; i++)
-                  highlightableCell(
-                    value: scores[i].commerce,
-                    onChanged: (v) => setState(() {
-                      scores[i].commerce = clampScore(v, 'commerce');;
-                      _updateWinners();
-                    }),
-                    highlight: winnerIndices.contains(i),
-                  ),
-              ]),
-
-              row(label('Guilds', 'guilds.svg', Colors.purple.shade600), [
-                for (int i = 0; i < scores.length; i++)
-                  highlightableCell(
-                    value: scores[i].guilds,
-                    onChanged: (v) => setState(() {
-                      scores[i].guilds = clampScore(v, 'guilds');;
-                      _updateWinners();
-                    }),
-                    highlight: winnerIndices.contains(i),
-                  ),
-              ]),
-
-              // SCIENCE
-              row(
-                label(
-                  'Sci: Tablets',
-                  'science_tablet.svg',
-                  Colors.green.shade700,
-                ),
-                [
-                  for (int i = 0; i < scores.length; i++)
-                    highlightableCell(
-                      value: scores[i].sciTablets,
-                      onChanged: (v) => setState(() {
-                        scores[i].sciTablets = clampScore(v, 'sciTablets');
-                        _updateWinners();
-                      }),
-                      highlight: winnerIndices.contains(i),
+                decoration: BoxDecoration(
+                  color: parchmentDark,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: gold, width: 1.4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
                     ),
-                ],
-              ),
-
-              row(
-                label('Sci: Gears', 'science_gear.svg', Colors.green.shade700),
-                [
-                  for (int i = 0; i < scores.length; i++)
-                    highlightableCell(
-                      value: scores[i].sciGears,
-                      onChanged: (v) => setState(() {
-                        scores[i].sciGears = clampScore(v, 'sciGears');;
-                        _updateWinners();
-                      }),
-                      highlight: winnerIndices.contains(i),
-                    ),
-                ],
-              ),
-
-              row(
-                label(
-                  'Sci: Compasses',
-                  'science_compass.svg',
-                  Colors.green.shade700,
+                  ],
                 ),
-                [
-                  for (int i = 0; i < scores.length; i++)
-                    highlightableCell(
-                      value: scores[i].sciCompasses,
-                      onChanged: (v) => setState(() {
-                        scores[i].sciCompasses = clampScore(v, 'sciCompases');;
-                        _updateWinners();
-                      }),
-                      highlight: winnerIndices.contains(i),
-                    ),
-                ],
-              ),
-
-              // SCIENCE TOTAL
-              row(
-                label(
-                  'Science Total',
-                  'science_total.svg',
-                  Colors.green.shade700,
-                ),
-                [
-                  for (int i = 0; i < scores.length; i++)
-                    Container(
-                      decoration: winnerIndices.contains(i)
-                          ? BoxDecoration(
-                              color: Colors.green.shade700.withOpacity(0.08),
-                              border: Border(
-                                left: BorderSide(
-                                  color: Colors.amber.shade700,
-                                  width: 2,
-                                ),
-                                right: BorderSide(
-                                  color: Colors.amber.shade700,
-                                  width: 2,
-                                ),
-                              ),
-                            )
-                          : null,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text(
-                        scores[i].science.toString(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: SizedBox(
+                        height: 36,
+                        width: 36,
+                        child: ColorFiltered(
+                          colorFilter: const ColorFilter.mode(
+                            goldBright,
+                            BlendMode.srcIn,
+                          ),
+                          child: SvgPicture.asset('assets/icons/laurel.svg'),
+                        ),
                       ),
                     ),
-                ],
+                    const SizedBox(height: 16),
+                    Container(
+                      height: 4,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        color: goldBright,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Scoring',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold, color: brown),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Enter scores for each category',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Color(0xFF6B4E1E),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ),
 
-              // TOTAL
-              row(label('Total', 'total.svg', Colors.amber.shade800), [
-                for (int i = 0; i < scores.length; i++)
+            // Scrollable scoring grid
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  // Player name header row
                   Container(
-                    decoration: winnerIndices.contains(i)
-                        ? BoxDecoration(
-                            color: Colors.amber.shade200.withOpacity(0.35),
-                            border: Border(
-                              left: BorderSide(
-                                color: Colors.amber.shade700,
-                                width: 2,
-                              ),
-                              right: BorderSide(
-                                color: Colors.amber.shade700,
-                                width: 2,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 120), // icon + label column
+                        for (int i = 0; i < widget.playerNames.length; i++)
+                          Expanded(
+                            child: Text(
+                              widget.playerNames[i],
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: brown,
                               ),
                             ),
-                          )
-                        : null,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      scores[i].total.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                      ],
                     ),
                   ),
-              ]),
-            ],
-          ),
+
+                  // Category rows
+                  for (var cat in categories)
+                    _buildCategoryRow(
+                      label: cat,
+                      iconPath: categoryIcons[cat]!,
+                      parchment: parchment,
+                      gold: gold,
+                      brown: brown,
+                      onChanged: (playerIndex, value) {
+                        setState(() {
+                          scores[cat]![playerIndex] = value;
+                        });
+                      },
+                    ),
+
+                  const SizedBox(height: 12),
+
+                  // Total row
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: goldBright.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: goldBright, width: 1.4),
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(
+                          width: 120,
+                          child: Text(
+                            'Total',
+                            style: TextStyle(
+                              color: brown,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        for (int i = 0; i < widget.playerNames.length; i++)
+                          Expanded(
+                            child: Container(
+                              alignment: Alignment.center,
+                              margin: const EdgeInsets.only(left: 8),
+                              decoration: BoxDecoration(
+                                color: winners.contains(i)
+                                    ? goldBright.withOpacity(0.4)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                totalForPlayer(i).toString(),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: winners.contains(i)
+                                      ? Colors.black
+                                      : brown,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Bottom action bar
+            // Bottom action area
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              color: Colors.transparent,
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: wondersButtonStyle,
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/results',
+                      arguments: {
+                        'players': widget.playerNames,
+                        'scores': scores,
+                      },
+                    );
+                  },
+                  child: const Text('Finish Scoring'),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(12),
-        child: ElevatedButton.icon(
-          onPressed: _finishGame,
-          icon: const Icon(Icons.leaderboard),
-          label: const Text('Finish Game'),
-        ),
+    );
+  }
+
+  final Map<String, Color> categoryColors = {
+    'Military': const Color(0xFFFFE5E5),
+    'Coins': const Color(0xFFFFF6D5),
+    'Wonders': const Color(0xFFEDE7E3),
+    'Civilian': const Color(0xFFE3F0FF),
+    'Commerce': const Color(0xFFFFEDD8),
+    'Guilds': const Color(0xFFEDE3FF),
+    'Science': const Color(0xFFE6F7E6),
+  };
+
+  Widget _buildCategoryRow({
+    required String label,
+    required String iconPath,
+    required Color parchment,
+    required Color gold,
+    required Color brown,
+    required Function(int playerIndex, int value) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: categoryColors[label] ?? parchment, // ← NEW
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: gold, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 120,
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  iconPath,
+                  height: 24,
+                  width: 24,
+                  colorFilter: ColorFilter.mode(
+                    categoryColors[label]!
+                        .withOpacity(0.9)
+                        .withRed(120)
+                        .withGreen(90)
+                        .withBlue(40),
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: brown,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Score inputs
+          for (int i = 0; i < widget.playerNames.length; i++)
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(left: 8),
+                child: TextField(
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 6),
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    final parsed = int.tryParse(value) ?? 0;
+                    onChanged(i, parsed);
+                  },
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

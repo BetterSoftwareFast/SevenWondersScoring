@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:seven_wonders_scoring/results_page.dart';
 import 'package:seven_wonders_scoring/scoring_page.dart';
 import 'home_page.dart';
 import 'new_game_page.dart';
@@ -18,15 +19,21 @@ class SevenWondersApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const HomePage(),
-        '/new-game': (context) => const NewGamePage(),
-        // '/previous-games': (context) => const PreviousGamesPage(),
+        '/new_game': (context) => const NewGamePage(),
         '/scoring': (context) {
           final names =
               ModalRoute.of(context)!.settings.arguments as List<String>;
           return ScoringPage(playerNames: names);
         },
         '/previous-games': (context) => const PreviousGamesPage(),
-      },
+        '/results': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+            return ResultsPage(
+              players: args['players'],
+              scores: args['scores'],
+            );
+        },
+      }
     );
   }
 }

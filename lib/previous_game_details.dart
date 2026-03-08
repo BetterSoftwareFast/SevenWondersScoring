@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'previous_games.dart';
-import 'player_score.dart';
 
 class PreviousGameDetailsPage extends StatelessWidget {
   final PreviousGame game;
