@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:seven_wonders_scoring/scoring_page.dart';
+import 'player_roster.dart';
 
 class NewGamePage extends StatefulWidget {
   const NewGamePage({super.key});
@@ -21,6 +23,13 @@ class _NewGamePageState extends State<NewGamePage> {
   }
 
   void _addPlayer() {
+    if (_controllers.length >= 7) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Maximum of 7 players allowed')),
+      );
+      return;
+    }
+
     setState(() {
       _controllers.add(TextEditingController());
     });
@@ -31,6 +40,22 @@ class _NewGamePageState extends State<NewGamePage> {
     setState(() {
       _controllers.removeAt(index);
     });
+  }
+
+  void _goToScoring() async {
+    final newNames = _controllers
+        .map((c) => c.text.trim())
+        .where((name) => name.isNotEmpty)
+        .toList();
+
+    PlayerRoster.addNames(newNames);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ScoringPage(playerNames: newNames),
+      ),
+    );
   }
 
   bool get _canContinue {
@@ -76,7 +101,10 @@ class _NewGamePageState extends State<NewGamePage> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 20,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
                   color: parchmentDark,
                   borderRadius: BorderRadius.circular(12),
@@ -97,8 +125,13 @@ class _NewGamePageState extends State<NewGamePage> {
                         height: 36,
                         width: 36,
                         child: ColorFiltered(
-                          colorFilter: ColorFilter.mode(goldBright, BlendMode.srcIn),
-                          child: SvgPicture.asset('assets/icons/laurel.svg'), // or SvgPicture.asset
+                          colorFilter: ColorFilter.mode(
+                            goldBright,
+                            BlendMode.srcIn,
+                          ),
+                          child: SvgPicture.asset(
+                            'assets/icons/laurel.svg',
+                          ), // or SvgPicture.asset
                         ),
                       ),
                     ),
@@ -114,17 +147,15 @@ class _NewGamePageState extends State<NewGamePage> {
                     const SizedBox(height: 12),
                     Text(
                       'New Game',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: brown,
-                          ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold, color: brown),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Add players to begin scoring',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFF6B4E1E),
-                          ),
+                        color: const Color(0xFF6B4E1E),
+                      ),
                     ),
                   ],
                 ),
@@ -139,7 +170,10 @@ class _NewGamePageState extends State<NewGamePage> {
                   itemBuilder: (context, index) {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
                       decoration: BoxDecoration(
                         color: parchment,
                         borderRadius: BorderRadius.circular(12),
@@ -172,7 +206,10 @@ class _NewGamePageState extends State<NewGamePage> {
                               onTap: () => _removePlayer(index),
                               child: const Padding(
                                 padding: EdgeInsets.all(8.0),
-                                child: Text('❌', style: TextStyle(fontSize: 20)),
+                                child: Text(
+                                  '❌',
+                                  style: TextStyle(fontSize: 20),
+                                ),
                               ),
                             ),
                         ],
@@ -205,10 +242,7 @@ class _NewGamePageState extends State<NewGamePage> {
                   ),
                 ),
                 onPressed: _canContinue
-                    ? () {
-                        final names = _controllers.map((c) => c.text.trim()).toList();
-                        Navigator.pushNamed(context, '/scoring', arguments: names);
-                      }
+                    ? () => _goToScoring()
                     : null,
                 child: const Text('Continue'),
               ),
